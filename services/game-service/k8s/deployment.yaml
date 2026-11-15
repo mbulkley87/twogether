@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: game-service
+  namespace: twogether
+  labels:
+    app: game-service
+spec:
+  # In-memory lobby/game state (ConcurrentHashMap, no database) lives inside
+  # one process - keep this at 1, or a player's game can silently 404 if a
+  # later request/socket connection lands on a different pod than the one
+  # that created it.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: game-service
+  template:
+    metadata:
+      labels:
+        app: game-service
+    spec:
+      containers:
+        - name: game-service
+          # Built and imported directly into K3s's containerd on the same
+          # single node (docker build -> docker save | k3s ctr images import) -
+          # no external registry needed for a single-node cluster.
+          image: twogether/game-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          env:
+            - name: CORS_ALLOWED_ORIGINS
+              value: "https://twogether.matthewbulkley.com,http://localhost:5175"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /api/game/health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/game/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 20

@@ -1,22 +1,67 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import PhaserGame from './components/PhaserGame'
+import LobbyScreen from './components/LobbyScreen'
 import AccountWidget from './components/AccountWidget'
 import LoginModal from './components/LoginModal'
 import LeaderboardModal from './components/LeaderboardModal'
 import useAccount from './hooks/useAccount'
+import { submitScore } from './services/accountsApi'
 import './App.css'
 
-// Milestone 2 of the top-down/networked rewrite: prove Phaser mounts
-// inside React, loads a real Tiled map, and a sprite moves + collides with
-// walls. No puzzle mechanic, no networking, no level progression yet -
-// those come back in the next milestones. See the plan at
-// C:\Users\Admin\.claude\plans\rosy-launching-narwhal.md.
+const LEVEL_KEY = 'dungeon1'
+const MAP_WIDTH = 12
+const MAP_HEIGHT = 8
+
+// Faster full runs score higher, matching the shared leaderboard's
+// "higher score wins" convention. The elapsed time comes from the
+// server's one authoritative `complete` message, not either browser's
+// own clock - see the rewrite plan's leaderboard-adaptation section.
+const SCORE_CEILING = 1_000_000
+function scoreFromElapsedMs(elapsedMs) {
+  return Math.max(0, SCORE_CEILING - Math.round(elapsedMs / 10))
+}
+
+function formatTime(ms) {
+  const totalSeconds = ms / 1000
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = (totalSeconds - minutes * 60).toFixed(1)
+  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`
+}
+
 export default function App() {
-  const [screen, setScreen] = useState('title') // title | playing
+  const [screen, setScreen] = useState('title') // title | lobby | playing | complete
+  const [session, setSession] = useState(null) // { gameId, playerId, mySlot }
   const [showLogin, setShowLogin] = useState(false)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
+  const [finalElapsedMs, setFinalElapsedMs] = useState(null)
+  const [scoreStatus, setScoreStatus] = useState(null) // null | 'saving' | 'saved' | 'error'
+  const [connectionStatus, setConnectionStatus] = useState('connecting')
 
   const account = useAccount()
+
+  const handleGameStart = useCallback((gameId, playerId, isHost) => {
+    setSession({ gameId, playerId, mySlot: isHost ? 1 : 2 })
+    setScreen('playing')
+  }, [])
+
+  const handleComplete = useCallback((elapsedMs) => {
+    setFinalElapsedMs(elapsedMs)
+    setScreen('complete')
+    if (account.isLoggedIn) {
+      setScoreStatus('saving')
+      submitScore(account.token, 'twogether', scoreFromElapsedMs(elapsedMs))
+        .then(() => setScoreStatus('saved'))
+        .catch(() => setScoreStatus('error'))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account.isLoggedIn, account.token])
+
+  function backToTitle() {
+    setSession(null)
+    setFinalElapsedMs(null)
+    setScoreStatus(null)
+    setScreen('title')
+  }
 
   return (
     <div className="twogether-app">
@@ -30,26 +75,56 @@ export default function App() {
 
       <header className="twogether-header">
         <h1>Twogether</h1>
-        {screen === 'playing' && <p className="twogether-level-name">Dungeon 1 (puzzle mechanic test)</p>}
+        {screen === 'playing' && <p className="twogether-level-name">Dungeon 1</p>}
       </header>
 
       {screen === 'title' && (
         <div className="twogether-panel">
-          <p>Rebuilding as a top-down, networked co-op game. This test still drives both players locally (WASD + arrows) until real networking lands.</p>
-          <div className="twogether-controls">
-            <div>Player 1: WASD. Player 2 (temporary local test): I/J/K/L.</div>
-          </div>
-          <button className="twogether-button" onClick={() => setScreen('playing')}>Start</button>
+          <p>
+            Two players, two devices. Someone has to hold the button so the
+            other can get through - then you have to figure out how to get
+            them back.
+          </p>
+          <button className="twogether-button" onClick={() => setScreen('lobby')}>Play</button>
           <button className="twogether-secondary-button" onClick={() => setShowLeaderboard(true)}>
             🏆 Leaderboard
           </button>
         </div>
       )}
 
-      {screen === 'playing' && (
+      {screen === 'lobby' && (
+        <LobbyScreen onBack={() => setScreen('title')} onGameStart={handleGameStart} />
+      )}
+
+      {screen === 'playing' && session && (
         <div className="twogether-stage">
-          <PhaserGame levelKey="dungeon1" mapWidth={12} mapHeight={8} />
-          <button className="twogether-restart" onClick={() => setScreen('title')}>Back to Title</button>
+          <PhaserGame
+            levelKey={LEVEL_KEY}
+            mapWidth={MAP_WIDTH}
+            mapHeight={MAP_HEIGHT}
+            gameId={session.gameId}
+            playerId={session.playerId}
+            mySlot={session.mySlot}
+            onComplete={handleComplete}
+            onStatusChange={setConnectionStatus}
+          />
+          {connectionStatus === 'reconnecting' && <p className="twogether-score-status">Reconnecting...</p>}
+          <button className="twogether-restart" onClick={backToTitle}>Leave Game</button>
+        </div>
+      )}
+
+      {screen === 'complete' && (
+        <div className="twogether-panel">
+          <h2>You made it, Twogether.</h2>
+          <p>Full run: {formatTime(finalElapsedMs)}</p>
+          {scoreStatus === 'saving' && <p className="twogether-score-status">Saving score...</p>}
+          {scoreStatus === 'saved' && <p className="twogether-score-status">Score saved to the leaderboard!</p>}
+          {scoreStatus === 'error' && <p className="account-error">Could not save your score - try again later.</p>}
+          {!account.isLoggedIn && <p className="twogether-score-status">Sign in to save your time to the leaderboard.</p>}
+          <button className="twogether-button" onClick={backToTitle}>Play Again</button>
+          <button className="twogether-secondary-button" onClick={() => setShowLeaderboard(true)}>
+            🏆 Leaderboard
+          </button>
         </div>
       )}
 

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: game-service
+  namespace: twogether
+spec:
+  selector:
+    app: game-service
+  ports:
+    - port: 8080
+      targetPort: 8080
+  # ClusterIP is all cloudflared needs - it reaches this Service by its
+  # in-cluster DNS name (game-service.twogether.svc.cluster.local).
+  type: ClusterIP
