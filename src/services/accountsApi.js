@@ -1,0 +1,68 @@
+// Shared across every game/site under matthewbulkley.com, not specific to
+// Twogether - see the accounts-service repo. The service's own CORS config
+// needs twogether's dev/prod origins added (localhost:5175 and whatever the
+// deployed domain ends up being).
+const BASE_URL = import.meta.env.VITE_ACCOUNTS_API_URL || 'https://accounts.matthewbulkley.com'
+
+async function parseOrThrow(response) {
+  if (response.ok) {
+    // Some endpoints (e.g. score submission) return 200 with an empty
+    // body, not 204 - response.json() throws SyntaxError on "", so check
+    // for actual content first rather than trusting the status code.
+    const text = await response.text()
+    return text ? JSON.parse(text) : null
+  }
+  const message = await response.text().catch(() => '')
+  throw new Error(message || `Request failed (${response.status})`)
+}
+
+export async function loginAsGuest(username) {
+  const response = await fetch(`${BASE_URL}/api/auth/guest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username }),
+  })
+  return parseOrThrow(response)
+}
+
+// Unlike loginAsGuest, this identity CAN be logged back into later from any
+// browser - recommended over guest for anyone who wants their leaderboard
+// name to persist across devices.
+export async function registerWithPassword(username, password) {
+  const response = await fetch(`${BASE_URL}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  })
+  return parseOrThrow(response)
+}
+
+export async function loginWithPassword(username, password) {
+  const response = await fetch(`${BASE_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  })
+  return parseOrThrow(response)
+}
+
+export async function fetchCurrentUser(token) {
+  const response = await fetch(`${BASE_URL}/api/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  return parseOrThrow(response)
+}
+
+export async function submitScore(token, game, score) {
+  const response = await fetch(`${BASE_URL}/api/leaderboard/${game}/scores`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ score }),
+  })
+  return parseOrThrow(response)
+}
+
+export async function fetchLeaderboard(game, limit = 20) {
+  const response = await fetch(`${BASE_URL}/api/leaderboard/${game}?limit=${limit}`)
+  return parseOrThrow(response)
+}
