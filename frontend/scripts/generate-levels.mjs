@@ -1,17 +1,19 @@
 import { writeLevel, TILES } from './build-level.mjs'
 
+// Goals/plates/doors are all plain floor in the static layer - their
+// actual visuals (chest, lever, door) are drawn dynamically by the scene
+// on top, from the Objects layer below, so they can change appearance
+// (open/closed) at runtime. A door's solidity is likewise purely runtime
+// (see movement.js's isSolidTile) - it must NOT be baked into the static
+// Walls layer as an always-solid tile, or it can never open.
 const LEGEND = {
   '#': { ground: TILES.FLOOR, wall: TILES.WALL },
   '.': { ground: TILES.FLOOR, wall: null },
   '1': { ground: TILES.FLOOR, wall: null },
   '2': { ground: TILES.FLOOR, wall: null },
-  'G': { ground: TILES.GOAL, wall: null },
-  'H': { ground: TILES.GOAL, wall: null },
-  'a': { ground: TILES.PLATE, wall: null },
-  // A door's solidity is purely runtime (open/closed based on game
-  // state, see movement.js's isSolidTile) - it must NOT be baked into
-  // the static Walls layer as an always-solid tile, or it can never
-  // open. The door's visual gets drawn dynamically by the scene instead.
+  'G': { ground: TILES.FLOOR, wall: null },
+  'H': { ground: TILES.FLOOR, wall: null },
+  'a': { ground: TILES.FLOOR, wall: null },
   'A': { ground: TILES.FLOOR, wall: null },
 }
 

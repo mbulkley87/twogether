@@ -4,8 +4,13 @@
 // a bridge: the OUTPUT is a genuine Tiled-format file (still editable
 // later in the real Tiled app), even though the INPUT here is a plain
 // JS description. Tile indices below refer to frames in
-// public/tilesets/dungeon.png (Kenney "Tiny Dungeon", 16x16, 12 cols,
-// 0-based frame index = row*12+col).
+// public/tilesets/walls_floor.png (CraftPix "Top-Down Dungeon Pixel
+// Tileset", 16x16, 17 cols, 0-based frame index = row*17+col - from the
+// user's own CraftPix subscription, not redistributable). Doors/plates/
+// goals are NOT part of this static tile layer at all - GameScene draws
+// those dynamically from the Objects layer below, each from its own
+// spritesheet (doors.png / chest_lever.png), so their open/closed state
+// can change at runtime without touching the static layer.
 import { writeFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
@@ -13,11 +18,8 @@ import { dirname, join } from 'path'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 export const TILES = {
-  FLOOR: 49,
-  WALL: 37,
-  DOOR: 23,
-  PLATE: 92,
-  GOAL: 91,
+  FLOOR: 121,
+  WALL: 231,
 }
 
 // gid = 0 means "no tile"; otherwise frame index + 1 (Tiled's firstgid=1 convention).
@@ -32,7 +34,7 @@ function gid(tileIndex) {
  *   if `char` is given, every occurrence of that character becomes a point object
  *   named `name` (suffixed with an index if there's more than one).
  */
-export function buildLevel({ grid, legend, objects = [], tilesetImage = '../tilesets/dungeon.png' }) {
+export function buildLevel({ grid, legend, objects = [], tilesetImage = '../tilesets/walls_floor.png' }) {
   const height = grid.length
   const width = grid[0].length
   if (grid.some((row) => row.length !== width)) {
@@ -90,14 +92,14 @@ export function buildLevel({ grid, legend, objects = [], tilesetImage = '../tile
     nextobjectid: nextId,
     tilesets: [{
       firstgid: 1,
-      name: 'dungeon',
+      name: 'walls_floor',
       image: tilesetImage,
-      imagewidth: 192,
-      imageheight: 176,
+      imagewidth: 272,
+      imageheight: 416,
       tilewidth: 16,
       tileheight: 16,
-      columns: 12,
-      tilecount: 132,
+      columns: 17,
+      tilecount: 442,
       margin: 0,
       spacing: 0,
     }],
