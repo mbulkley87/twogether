@@ -84,7 +84,13 @@ export default class GameScene extends Phaser.Scene {
 
   update(time, delta) {
     if (!this.myPlayer) return
-    const dt = delta / 1000
+    // A backgrounded tab (switching apps on mobile, or just not being the
+    // focused window) gets requestAnimationFrame throttled by the browser -
+    // the next frame's delta can then be huge, which would otherwise move
+    // the player a large distance in one step and tunnel straight through
+    // a one-tile-wide door gap instead of being stopped by it. Clamp it so
+    // a throttled frame just pauses movement instead of jumping.
+    const dt = Math.min(delta / 1000, 1 / 30)
 
     const input = this.readInput()
     const openDoors = this.openDoorsRef?.current ?? new Set()
