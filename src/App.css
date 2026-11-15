@@ -1,0 +1,99 @@
+.twogether-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px 48px;
+  gap: 16px;
+}
+
+.twogether-header {
+  text-align: center;
+}
+
+.twogether-header h1 {
+  margin: 0;
+  font-size: 2.4rem;
+  letter-spacing: 0.05em;
+  background: linear-gradient(90deg, #e63946, #457b9d);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.twogether-level-name {
+  margin: 4px 0 0;
+  color: #9a9ab0;
+  font-size: 1rem;
+}
+
+.twogether-panel {
+  max-width: 480px;
+  text-align: center;
+  background: #16161f;
+  border: 1px solid #28283a;
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: #d0d0e0;
+  line-height: 1.5;
+}
+
+.twogether-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.95rem;
+}
+
+.p1-label {
+  color: #e63946;
+}
+
+.p2-label {
+  color: #457b9d;
+}
+
+.twogether-button {
+  background: linear-gradient(90deg, #e63946, #457b9d);
+  border: none;
+  color: white;
+  font-size: 1.05rem;
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.twogether-button:hover {
+  filter: brightness(1.1);
+}
+
+.twogether-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.twogether-canvas {
+  border: 2px solid #28283a;
+  border-radius: 8px;
+  background: #101016;
+}
+
+.twogether-restart {
+  background: #1f1f2c;
+  border: 1px solid #333348;
+  color: #d0d0e0;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.twogether-restart:hover {
+  background: #28283c;
+}
