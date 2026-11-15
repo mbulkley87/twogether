@@ -29,7 +29,8 @@ export default class GameScene extends Phaser.Scene {
 
   init(data) {
     this.levelKey = data.levelKey
-    this.inputRef = data.inputRef
+    this.keyboardRef = data.keyboardRef
+    this.touchRef = data.touchRef
     this.mySlot = data.mySlot
     this.peerRef = data.peerRef
     this.openDoorsRef = data.openDoorsRef
@@ -85,7 +86,7 @@ export default class GameScene extends Phaser.Scene {
     if (!this.myPlayer) return
     const dt = delta / 1000
 
-    const input = this.inputRef?.current ?? { up: false, down: false, left: false, right: false }
+    const input = this.readInput()
     const openDoors = this.openDoorsRef?.current ?? new Set()
     stepPlayer(this.myPlayer, input, this.level, openDoors, dt)
     this.positionSprite(this.mySprite, this.myPlayer)
@@ -102,6 +103,20 @@ export default class GameScene extends Phaser.Scene {
     for (const [letter, sprites] of Object.entries(this.doorSprites)) {
       const frame = openDoors.has(letter) ? FRAMES.DOOR_OPEN : FRAMES.DOOR_CLOSED
       sprites.forEach((s) => s.setFrame(frame))
+    }
+  }
+
+  // Merged at read time rather than write time - keyboard and touch are
+  // two independent input sources feeding the same shape, either can
+  // drive movement on its own and both can be held at once.
+  readInput() {
+    const keys = this.keyboardRef?.current ?? {}
+    const touch = this.touchRef?.current ?? {}
+    return {
+      up: Boolean(keys.up || touch.up),
+      down: Boolean(keys.down || touch.down),
+      left: Boolean(keys.left || touch.left),
+      right: Boolean(keys.right || touch.right),
     }
   }
 

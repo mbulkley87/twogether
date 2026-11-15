@@ -1,18 +1,28 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Phaser from 'phaser'
 import GameScene from '../game/scenes/GameScene'
 import { useKeyboard } from '../hooks/useKeyboard'
+import { useTouchJoystick } from '../hooks/useTouchJoystick'
 import { connectGameSocket } from '../net/gameSocket'
+import TouchControls from './TouchControls'
 
 const TILE_SIZE = 16
 
 export default function PhaserGame({ levelKey, mapWidth, mapHeight, gameId, playerId, mySlot, onComplete, onStatusChange }) {
   const containerRef = useRef(null)
-  const inputRef = useKeyboard()
+  const keyboardRef = useKeyboard()
+  const touch = useTouchJoystick()
   const gameRef = useRef(null)
   const socketRef = useRef(null)
   const peerRef = useRef({ x: null, y: null, dir: 'down', moving: false })
   const openDoorsRef = useRef(new Set())
+  const [showTouchControls] = useState(() => {
+    try {
+      return window.matchMedia('(pointer: coarse)').matches
+    } catch {
+      return false
+    }
+  })
 
   useEffect(() => {
     const socket = connectGameSocket({
@@ -48,7 +58,8 @@ export default function PhaserGame({ levelKey, mapWidth, mapHeight, gameId, play
     })
     game.scene.start('GameScene', {
       levelKey,
-      inputRef,
+      keyboardRef,
+      touchRef: touch.stateRef,
       mySlot,
       peerRef,
       openDoorsRef,
@@ -64,10 +75,19 @@ export default function PhaserGame({ levelKey, mapWidth, mapHeight, gameId, play
   }, [levelKey, mySlot])
 
   return (
-    <div
-      ref={containerRef}
-      className="twogether-phaser-container"
-      style={{ '--map-aspect': `${mapWidth} / ${mapHeight}` }}
-    />
+    <div className="twogether-game-wrapper">
+      <div
+        ref={containerRef}
+        className="twogether-phaser-container"
+        style={{ '--map-aspect': `${mapWidth} / ${mapHeight}` }}
+      />
+      {showTouchControls && (
+        <TouchControls
+          onPointerDown={touch.onPointerDown}
+          onPointerMove={touch.onPointerMove}
+          onPointerUp={touch.onPointerUp}
+        />
+      )}
+    </div>
   )
 }
