@@ -30,14 +30,14 @@ export default function App() {
 
       <header className="twogether-header">
         <h1>Twogether</h1>
-        {screen === 'playing' && <p className="twogether-level-name">Room 1 (movement test)</p>}
+        {screen === 'playing' && <p className="twogether-level-name">Dungeon 1 (puzzle mechanic test)</p>}
       </header>
 
       {screen === 'title' && (
         <div className="twogether-panel">
-          <p>Rebuilding as a top-down, networked co-op game. This is an early movement test.</p>
+          <p>Rebuilding as a top-down, networked co-op game. This test still drives both players locally (WASD + arrows) until real networking lands.</p>
           <div className="twogether-controls">
-            <div>WASD or arrow keys to move</div>
+            <div>Player 1: WASD. Player 2 (temporary local test): I/J/K/L.</div>
           </div>
           <button className="twogether-button" onClick={() => setScreen('playing')}>Start</button>
           <button className="twogether-secondary-button" onClick={() => setShowLeaderboard(true)}>
@@ -48,7 +48,7 @@ export default function App() {
 
       {screen === 'playing' && (
         <div className="twogether-stage">
-          <PhaserGame levelKey="room1" mapWidth={10} mapHeight={8} />
+          <PhaserGame levelKey="dungeon1" mapWidth={12} mapHeight={8} />
           <button className="twogether-restart" onClick={() => setScreen('title')}>Back to Title</button>
         </div>
       )}
