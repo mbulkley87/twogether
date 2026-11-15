@@ -83,6 +83,7 @@ export default function PhaserGame({ levelKey, mapWidth, mapHeight, gameId, play
       />
       {showTouchControls && (
         <TouchControls
+          origin={touch.origin}
           onPointerDown={touch.onPointerDown}
           onPointerMove={touch.onPointerMove}
           onPointerUp={touch.onPointerUp}

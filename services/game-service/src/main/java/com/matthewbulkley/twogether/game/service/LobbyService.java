@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,15 +34,23 @@ public class LobbyService {
 
     public record JoinResult(Lobby lobby, UUID playerId) { }
 
-    public JoinResult create(String playerName) {
+    public JoinResult create(String playerName, boolean isPublic) {
         String name = requirePlayerName(playerName);
         String code = generateUniqueCode();
-        Lobby lobby = new Lobby(code);
+        Lobby lobby = new Lobby(code, isPublic);
         UUID playerId = UUID.randomUUID();
         lobby.getMembers().add(new LobbyMember(playerId, name, true));
         lobbies.put(code, lobby);
         touch(code);
         return new JoinResult(lobby, playerId);
+    }
+
+    /** Public, still-joinable lobbies - what GET /api/lobbies/public lists for join-without-a-code. */
+    public List<Lobby> listPublicLobbies() {
+        return lobbies.values().stream()
+                .filter(Lobby::isPublic)
+                .filter(Lobby::isJoinable)
+                .toList();
     }
 
     public JoinResult join(String code, String playerName) {

@@ -1,17 +1,17 @@
 import { useRef } from 'react'
 
 /**
- * A translucent on-screen joystick overlay, shown only on coarse-pointer
- * (touch) devices - see the `(pointer: coarse)` check in PhaserGame.jsx.
- * The thumb's visual position is pushed directly to the DOM via a ref,
- * not React state, to avoid a re-render on every pointermove.
+ * A full-coverage touch zone over the game canvas - touching anywhere
+ * makes a glowing joystick appear centered AT that exact point and track
+ * movement from there (a "floating" joystick, the standard mobile-game
+ * feel), rather than a small fixed circle in one corner that has to be
+ * found and hit precisely. The thumb's visual position is pushed
+ * directly to the DOM via a ref during drag, not React state, to avoid
+ * a re-render on every pointermove; only the base's origin (set once per
+ * press) is React state, from useTouchJoystick.
  */
-export default function TouchControls({ onPointerDown, onPointerMove, onPointerUp }) {
+export default function TouchControls({ origin, onPointerDown, onPointerMove, onPointerUp }) {
   const thumbRef = useRef(null)
-
-  function handleDown(event) {
-    onPointerDown(event)
-  }
 
   function handleMove(event) {
     const result = onPointerMove(event)
@@ -27,13 +27,17 @@ export default function TouchControls({ onPointerDown, onPointerMove, onPointerU
 
   return (
     <div
-      className="twogether-joystick-base"
-      onPointerDown={handleDown}
+      className="twogether-touch-zone"
+      onPointerDown={onPointerDown}
       onPointerMove={handleMove}
       onPointerUp={handleUp}
       onPointerCancel={handleUp}
     >
-      <div ref={thumbRef} className="twogether-joystick-thumb" />
+      {origin && (
+        <div className="twogether-joystick-base" style={{ left: origin.x, top: origin.y }}>
+          <div ref={thumbRef} className="twogether-joystick-thumb" />
+        </div>
+      )}
     </div>
   )
 }

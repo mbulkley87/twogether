@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { createLobby, joinLobby, getLobby, leaveLobby, startGame } from '../net/lobbyApi'
+import { createLobby, joinLobby, getLobby, leaveLobby, startGame, listPublicLobbies } from '../net/lobbyApi'
 import { connectLobbySocket } from '../net/lobbySocket'
 
 const SESSION_KEY = 'twogether-lobby-session'
@@ -23,10 +23,16 @@ function writeSession(session) {
 // Ported from Hero Details' LobbyScreen - same join-code/waiting-room/
 // reconnect-on-refresh shell, with the class picker removed since there's
 // nothing to pick here. "Ready" collapses to "both seats are filled."
+// The host decides private-vs-public at creation; joining offers both a
+// code field (the default, works for any lobby) and a live list of open
+// public lobbies to join with one click, no code needed.
 function LobbyScreen({ onBack, onGameStart }) {
   const [step, setStep] = useState('entry')
   const [playerName, setPlayerName] = useState('')
+  const [isPublicCreate, setIsPublicCreate] = useState(false)
   const [joinCode, setJoinCode] = useState('')
+  const [publicLobbies, setPublicLobbies] = useState(null)
+  const [publicLobbiesError, setPublicLobbiesError] = useState(null)
   const [lobby, setLobby] = useState(null)
   const [playerId, setPlayerId] = useState(null)
   const [code, setCode] = useState(null)
@@ -97,7 +103,7 @@ function LobbyScreen({ onBack, onGameStart }) {
     setSubmitting(true)
     setLocalError(null)
     try {
-      const result = await createLobby(playerName.trim())
+      const result = await createLobby(playerName.trim(), isPublicCreate)
       writeSession({ playerName: playerName.trim(), lobbyCode: result.lobby.code, playerId: result.playerId })
       setCode(result.lobby.code)
       setPlayerId(result.playerId)
@@ -111,12 +117,11 @@ function LobbyScreen({ onBack, onGameStart }) {
     }
   }
 
-  async function handleJoinSubmit() {
-    if (!playerName.trim() || !joinCode.trim() || submitting) return
+  async function joinByCode(trimmedCode) {
+    if (!playerName.trim() || submitting) return
     setSubmitting(true)
     setLocalError(null)
     try {
-      const trimmedCode = joinCode.trim().toUpperCase()
       const result = await joinLobby(trimmedCode, playerName.trim())
       writeSession({ playerName: playerName.trim(), lobbyCode: result.lobby.code, playerId: result.playerId })
       setCode(result.lobby.code)
@@ -129,6 +134,27 @@ function LobbyScreen({ onBack, onGameStart }) {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  function handleJoinSubmit() {
+    if (!joinCode.trim()) return
+    joinByCode(joinCode.trim().toUpperCase())
+  }
+
+  async function refreshPublicLobbies() {
+    setPublicLobbiesError(null)
+    try {
+      const list = await listPublicLobbies()
+      setPublicLobbies(list)
+    } catch (err) {
+      setPublicLobbiesError(err.message)
+    }
+  }
+
+  function openJoinScreen() {
+    setStep('joining')
+    setPublicLobbies(null)
+    refreshPublicLobbies()
   }
 
   async function handleStart() {
@@ -171,7 +197,7 @@ function LobbyScreen({ onBack, onGameStart }) {
     return (
       <div className="twogether-panel">
         <div className="lobby-code-display">
-          Join Code <strong>{lobby.code}</strong>
+          {lobby.public ? 'Public Game' : 'Private Game'} <strong>{lobby.code}</strong>
         </div>
 
         <ul className="lobby-roster">
@@ -203,15 +229,46 @@ function LobbyScreen({ onBack, onGameStart }) {
   if (step === 'joining') {
     return (
       <div className="twogether-panel">
-        <input
-          className="account-username-input"
-          type="text"
-          placeholder="Join Code"
-          value={joinCode}
-          maxLength={5}
-          onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
-        />
-        <button className="twogether-button" onClick={handleJoinSubmit} disabled={submitting || !joinCode.trim()}>Join</button>
+        <div className="lobby-join-section">
+          <h3 className="lobby-join-heading">Private Game</h3>
+          <input
+            className="account-username-input"
+            type="text"
+            placeholder="Join Code"
+            value={joinCode}
+            maxLength={5}
+            onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
+          />
+          <button className="twogether-button" onClick={handleJoinSubmit} disabled={submitting || !joinCode.trim()}>Join with Code</button>
+        </div>
+
+        <div className="lobby-join-section">
+          <div className="lobby-join-heading-row">
+            <h3 className="lobby-join-heading">Public Games</h3>
+            <button className="lobby-refresh-button" onClick={refreshPublicLobbies} disabled={submitting}>Refresh</button>
+          </div>
+          {publicLobbiesError && <p className="account-error">{publicLobbiesError}</p>}
+          {!publicLobbiesError && publicLobbies === null && <p className="twogether-score-status">Loading...</p>}
+          {!publicLobbiesError && publicLobbies?.length === 0 && <p className="twogether-score-status">No public games open right now.</p>}
+          {!publicLobbiesError && publicLobbies?.length > 0 && (
+            <ul className="lobby-public-list">
+              {publicLobbies.map((publicLobby) => (
+                <li key={publicLobby.code} className="lobby-public-row">
+                  <span className="lobby-public-host">{publicLobby.members[0]?.playerName ?? 'Someone'}'s game</span>
+                  <span className="lobby-public-count">{publicLobby.members.length}/2</span>
+                  <button
+                    className="lobby-public-join-button"
+                    disabled={submitting}
+                    onClick={() => joinByCode(publicLobby.code)}
+                  >
+                    Join
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <button className="twogether-secondary-button" onClick={() => setStep('entry')}>Back</button>
         {localError && <p className="account-error">{localError}</p>}
       </div>
@@ -228,8 +285,27 @@ function LobbyScreen({ onBack, onGameStart }) {
         maxLength={24}
         onChange={(event) => setPlayerName(event.target.value)}
       />
+      <div className="lobby-visibility-switch">
+        <button
+          type="button"
+          className={!isPublicCreate ? 'active' : ''}
+          onClick={() => setIsPublicCreate(false)}
+        >
+          Private
+        </button>
+        <button
+          type="button"
+          className={isPublicCreate ? 'active' : ''}
+          onClick={() => setIsPublicCreate(true)}
+        >
+          Public
+        </button>
+      </div>
+      <p className="twogether-score-status">
+        {isPublicCreate ? 'Anyone can find and join from the public games list.' : 'Only someone with your join code can get in.'}
+      </p>
       <button className="twogether-button" onClick={handleCreate} disabled={submitting || !playerName.trim()}>Create Lobby</button>
-      <button className="twogether-secondary-button" onClick={() => setStep('joining')} disabled={!playerName.trim()}>Join Lobby</button>
+      <button className="twogether-secondary-button" onClick={openJoinScreen} disabled={!playerName.trim()}>Join Lobby</button>
       <button className="twogether-secondary-button" onClick={onBack}>Back</button>
       {localError && <p className="account-error">{localError}</p>}
     </div>

@@ -12,8 +12,12 @@ async function request(path, options = {}) {
   return response.json()
 }
 
-export function createLobby(playerName) {
-  return request(`/lobbies?playerName=${encodeURIComponent(playerName)}`, { method: 'POST' })
+export function createLobby(playerName, isPublic) {
+  return request(`/lobbies?playerName=${encodeURIComponent(playerName)}&isPublic=${isPublic}`, { method: 'POST' })
+}
+
+export function listPublicLobbies() {
+  return request('/lobbies/public')
 }
 
 export function joinLobby(code, playerName) {

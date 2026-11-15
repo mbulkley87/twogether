@@ -21,17 +21,18 @@ class LobbyServiceTest {
 
     @Test
     void createStartsAOneMemberLobbyWithTheCreatorAsHost() {
-        LobbyService.JoinResult result = lobbyService.create("Alex");
+        LobbyService.JoinResult result = lobbyService.create("Alex", false);
 
         assertThat(result.lobby().getMembers()).hasSize(1);
         assertThat(result.lobby().getMembers().get(0).isHost()).isTrue();
         assertThat(result.lobby().getMembers().get(0).isConnected()).isTrue();
         assertThat(result.lobby().getMembers().get(0).getPlayerId()).isEqualTo(result.playerId());
+        assertThat(result.lobby().isPublic()).isFalse();
     }
 
     @Test
     void joinRejectsAThirdMember() {
-        LobbyService.JoinResult host = lobbyService.create("Alex");
+        LobbyService.JoinResult host = lobbyService.create("Alex", false);
         String code = host.lobby().getCode();
         lobbyService.join(code, "Sam");
 
@@ -42,7 +43,7 @@ class LobbyServiceTest {
 
     @Test
     void joinRejectsAnAlreadyStartedLobby() {
-        LobbyService.JoinResult host = lobbyService.create("Alex");
+        LobbyService.JoinResult host = lobbyService.create("Alex", false);
         String code = host.lobby().getCode();
         lobbyService.join(code, "Sam");
         lobbyService.markStarted(code, UUID.randomUUID());
@@ -60,7 +61,7 @@ class LobbyServiceTest {
 
     @Test
     void validateReadyToStartRequiresBothSeatsFilled() {
-        LobbyService.JoinResult host = lobbyService.create("Alex");
+        LobbyService.JoinResult host = lobbyService.create("Alex", false);
         String code = host.lobby().getCode();
 
         assertThatThrownBy(() -> lobbyService.validateReadyToStart(code, host.playerId()))
@@ -73,7 +74,7 @@ class LobbyServiceTest {
 
     @Test
     void validateReadyToStartRejectsANonHostRequester() {
-        LobbyService.JoinResult host = lobbyService.create("Alex");
+        LobbyService.JoinResult host = lobbyService.create("Alex", false);
         String code = host.lobby().getCode();
         LobbyService.JoinResult other = lobbyService.join(code, "Sam");
 
@@ -84,7 +85,7 @@ class LobbyServiceTest {
 
     @Test
     void leaveReassignsHostWhenTheHostLeaves() {
-        LobbyService.JoinResult host = lobbyService.create("Alex");
+        LobbyService.JoinResult host = lobbyService.create("Alex", false);
         String code = host.lobby().getCode();
         LobbyService.JoinResult other = lobbyService.join(code, "Sam");
 
@@ -96,7 +97,7 @@ class LobbyServiceTest {
 
     @Test
     void leaveDeletesAnEmptyLobby() {
-        LobbyService.JoinResult host = lobbyService.create("Alex");
+        LobbyService.JoinResult host = lobbyService.create("Alex", false);
         String code = host.lobby().getCode();
 
         Lobby afterLeave = lobbyService.leave(code, host.playerId());
@@ -107,8 +108,32 @@ class LobbyServiceTest {
 
     @Test
     void createRejectsABlankPlayerName() {
-        assertThatThrownBy(() -> lobbyService.create("   "))
+        assertThatThrownBy(() -> lobbyService.create("   ", false))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("name");
+    }
+
+    @Test
+    void listPublicLobbiesOnlyReturnsPublicJoinableOnes() {
+        LobbyService.JoinResult publicOpen = lobbyService.create("Alex", true);
+        lobbyService.create("Sam", false); // private - should never show up
+
+        LobbyService.JoinResult publicFull = lobbyService.create("Jo", true);
+        lobbyService.join(publicFull.lobby().getCode(), "Kim"); // now full - no longer joinable
+
+        LobbyService.JoinResult publicStarted = lobbyService.create("Lee", true);
+        lobbyService.join(publicStarted.lobby().getCode(), "Mo");
+        lobbyService.markStarted(publicStarted.lobby().getCode(), UUID.randomUUID());
+
+        var listed = lobbyService.listPublicLobbies();
+
+        assertThat(listed).hasSize(1);
+        assertThat(listed.get(0).getCode()).isEqualTo(publicOpen.lobby().getCode());
+    }
+
+    @Test
+    void listPublicLobbiesIsEmptyWhenThereAreNoPublicLobbies() {
+        lobbyService.create("Alex", false);
+        assertThat(lobbyService.listPublicLobbies()).isEmpty();
     }
 }

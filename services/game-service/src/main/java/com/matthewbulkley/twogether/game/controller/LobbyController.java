@@ -8,6 +8,7 @@ import com.matthewbulkley.twogether.game.websocket.LobbyWebSocketHandler;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -27,10 +28,18 @@ public class LobbyController {
     }
 
     @PostMapping("/lobbies")
-    public LobbyService.JoinResult createLobby(@RequestParam String playerName) {
-        LobbyService.JoinResult result = lobbyService.create(playerName);
+    public LobbyService.JoinResult createLobby(
+            @RequestParam String playerName,
+            @RequestParam(defaultValue = "false") boolean isPublic) {
+        LobbyService.JoinResult result = lobbyService.create(playerName, isPublic);
         lobbyWebSocketHandler.broadcast(result.lobby().getCode());
         return result;
+    }
+
+    /** Public, still-joinable lobbies - lets a player join without needing a code at all. */
+    @GetMapping("/lobbies/public")
+    public List<Lobby> listPublicLobbies() {
+        return lobbyService.listPublicLobbies();
     }
 
     @PostMapping("/lobbies/{code}/join")

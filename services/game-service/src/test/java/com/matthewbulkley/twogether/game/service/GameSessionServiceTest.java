@@ -35,7 +35,7 @@ class GameSessionServiceTest {
     void setUp() {
         service = new GameSessionService(new ObjectMapper());
 
-        Lobby lobby = new Lobby("TEST1");
+        Lobby lobby = new Lobby("TEST1", false);
         player1Id = UUID.randomUUID();
         player2Id = UUID.randomUUID();
         lobby.getMembers().add(new LobbyMember(player1Id, "Host", true));
