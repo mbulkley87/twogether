@@ -31,6 +31,7 @@ function LobbyScreen({ onBack, onGameStart }) {
   const [playerName, setPlayerName] = useState('')
   const [isPublicCreate, setIsPublicCreate] = useState(false)
   const [joinCode, setJoinCode] = useState('')
+  const [showCodeEntry, setShowCodeEntry] = useState(false)
   const [publicLobbies, setPublicLobbies] = useState(null)
   const [publicLobbiesError, setPublicLobbiesError] = useState(null)
   const [lobby, setLobby] = useState(null)
@@ -153,6 +154,7 @@ function LobbyScreen({ onBack, onGameStart }) {
 
   function openJoinScreen() {
     setStep('joining')
+    setShowCodeEntry(false)
     setPublicLobbies(null)
     refreshPublicLobbies()
   }
@@ -230,23 +232,11 @@ function LobbyScreen({ onBack, onGameStart }) {
     return (
       <div className="twogether-panel">
         <div className="lobby-join-section">
-          <h3 className="lobby-join-heading">Private Game</h3>
-          <input
-            className="account-username-input"
-            type="text"
-            placeholder="Join Code"
-            value={joinCode}
-            maxLength={5}
-            onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
-          />
-          <button className="twogether-button" onClick={handleJoinSubmit} disabled={submitting || !joinCode.trim()}>Join with Code</button>
-        </div>
-
-        <div className="lobby-join-section">
           <div className="lobby-join-heading-row">
             <h3 className="lobby-join-heading">Public Games</h3>
             <button className="lobby-refresh-button" onClick={refreshPublicLobbies} disabled={submitting}>Refresh</button>
           </div>
+          <p className="twogether-score-status">Pick a game below to join instantly. No code needed.</p>
           {publicLobbiesError && <p className="account-error">{publicLobbiesError}</p>}
           {!publicLobbiesError && publicLobbies === null && <p className="twogether-score-status">Loading...</p>}
           {!publicLobbiesError && publicLobbies?.length === 0 && <p className="twogether-score-status">No public games open right now.</p>}
@@ -266,6 +256,26 @@ function LobbyScreen({ onBack, onGameStart }) {
                 </li>
               ))}
             </ul>
+          )}
+        </div>
+
+        <div className="lobby-join-section">
+          {!showCodeEntry && (
+            <button className="lobby-code-toggle" onClick={() => setShowCodeEntry(true)}>Have a private game code?</button>
+          )}
+          {showCodeEntry && (
+            <>
+              <h3 className="lobby-join-heading">Private Game</h3>
+              <input
+                className="account-username-input"
+                type="text"
+                placeholder="Join Code"
+                value={joinCode}
+                maxLength={5}
+                onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
+              />
+              <button className="twogether-button" onClick={handleJoinSubmit} disabled={submitting || !joinCode.trim()}>Join with Code</button>
+            </>
           )}
         </div>
 
