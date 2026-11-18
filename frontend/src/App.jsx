@@ -113,7 +113,7 @@ export default function App() {
       )}
 
       {screen === 'lobby' && (
-        <LobbyScreen onBack={() => setScreen('title')} onGameStart={handleGameStart} />
+        <LobbyScreen playerName={account.username} onBack={() => setScreen('title')} onGameStart={handleGameStart} />
       )}
 
       {screen === 'playing' && session && (

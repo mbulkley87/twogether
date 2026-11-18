@@ -26,9 +26,12 @@ function writeSession(session) {
 // The host decides private-vs-public at creation; joining offers both a
 // code field (the default, works for any lobby) and a live list of open
 // public lobbies to join with one click, no code needed.
-function LobbyScreen({ onBack, onGameStart }) {
+//
+// `playerName` comes from the signed-in account, not a text field - sign-in
+// is required before a player ever reaches this screen, so by the time
+// they're here the server already knows who they are.
+function LobbyScreen({ playerName, onBack, onGameStart }) {
   const [step, setStep] = useState('entry')
-  const [playerName, setPlayerName] = useState('')
   const [isPublicCreate, setIsPublicCreate] = useState(false)
   const [joinCode, setJoinCode] = useState('')
   const [showCodeEntry, setShowCodeEntry] = useState(false)
@@ -74,7 +77,6 @@ function LobbyScreen({ onBack, onGameStart }) {
           if (!stillMember) writeSession(null)
           return
         }
-        setPlayerName(saved.playerName)
         setCode(saved.lobbyCode)
         setPlayerId(saved.playerId)
         setLobby(savedLobby)
@@ -287,14 +289,7 @@ function LobbyScreen({ onBack, onGameStart }) {
 
   return (
     <div className="twogether-panel">
-      <input
-        className="account-username-input"
-        type="text"
-        placeholder="Your name"
-        value={playerName}
-        maxLength={24}
-        onChange={(event) => setPlayerName(event.target.value)}
-      />
+      <p className="twogether-score-status">Playing as <strong>{playerName}</strong></p>
       <div className="lobby-visibility-switch">
         <button
           type="button"
