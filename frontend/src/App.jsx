@@ -1,9 +1,10 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import PhaserGame from './components/PhaserGame'
 import LobbyScreen from './components/LobbyScreen'
 import AccountWidget from './components/AccountWidget'
 import LoginModal from './components/LoginModal'
 import LeaderboardModal from './components/LeaderboardModal'
+import HomeButton from './components/HomeButton'
 import useAccount from './hooks/useAccount'
 import { submitScore } from './services/accountsApi'
 import './App.css'
@@ -36,8 +37,26 @@ export default function App() {
   const [finalElapsedMs, setFinalElapsedMs] = useState(null)
   const [scoreStatus, setScoreStatus] = useState(null) // null | 'saving' | 'saved' | 'error'
   const [connectionStatus, setConnectionStatus] = useState('connecting')
+  // Set when "Play" was clicked while signed out - resumes straight into
+  // the lobby once login completes instead of making the player click
+  // Play again. Shared session cookie means this fires immediately with
+  // no modal if they already signed in on another game or the dashboard.
+  const [pendingPlay, setPendingPlay] = useState(false)
 
   const account = useAccount()
+
+  useEffect(() => {
+    if (account.isLoggedIn && pendingPlay) {
+      setPendingPlay(false)
+      setShowLogin(false)
+      setScreen('lobby')
+    }
+  }, [account.isLoggedIn, pendingPlay])
+
+  function handlePlayClick() {
+    if (account.isLoggedIn) setScreen('lobby')
+    else { setPendingPlay(true); setShowLogin(true) }
+  }
 
   const handleGameStart = useCallback((gameId, playerId, isHost) => {
     setSession({ gameId, playerId, mySlot: isHost ? 1 : 2 })
@@ -65,6 +84,7 @@ export default function App() {
 
   return (
     <div className="twogether-app">
+      <HomeButton />
       <AccountWidget
         isLoggedIn={account.isLoggedIn}
         isChecking={account.isChecking}
@@ -85,7 +105,7 @@ export default function App() {
             other can get through - then you have to figure out how to get
             them back.
           </p>
-          <button className="twogether-button" onClick={() => setScreen('lobby')}>Play</button>
+          <button className="twogether-button" onClick={handlePlayClick}>Play</button>
           <button className="twogether-secondary-button" onClick={() => setShowLeaderboard(true)}>
             🏆 Leaderboard
           </button>
@@ -130,6 +150,7 @@ export default function App() {
 
       {showLogin && (
         <LoginModal
+          required={pendingPlay}
           onClose={() => setShowLogin(false)}
           onLoginGuest={account.loginGuest}
           onRegisterPassword={account.registerPassword}

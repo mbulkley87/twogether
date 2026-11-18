@@ -8,7 +8,7 @@ const MODES = [
 // Username/password is the primary path (recoverable from any browser).
 // Guest stays as a lower-friction fallback for a quick look. Google/
 // Facebook are modeled on the backend but not wired up here yet.
-function LoginModal({ onClose, onLoginGuest, onRegisterPassword, onLoginPassword }) {
+function LoginModal({ onClose, onLoginGuest, onRegisterPassword, onLoginPassword, required = false }) {
   const [mode, setMode] = useState('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -62,7 +62,7 @@ function LoginModal({ onClose, onLoginGuest, onRegisterPassword, onLoginPassword
         <button className="account-modal-close" onClick={onClose}>✕</button>
         <div className="account-modal-kicker">SHARED LOGIN</div>
         <h2>Sign In</h2>
-        <p>Log in (or create an account) to appear on the leaderboard.</p>
+        <p>{required ? 'Sign in (or create an account) to play.' : 'Log in (or create an account) to appear on the leaderboard.'}</p>
 
         <div className="account-mode-switch">
           {MODES.map((m) => (

@@ -360,6 +360,30 @@
 
 /* Account widget + shared-login/leaderboard modals */
 
+.home-button {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  left: max(14px, env(safe-area-inset-left));
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(22, 22, 31, 0.9);
+  border: 1px solid #28283a;
+  backdrop-filter: blur(6px);
+  color: #d0d0e0;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.home-button:hover {
+  border-color: #52527a;
+  color: #fff;
+}
+
 .account-widget {
   position: fixed;
   top: max(14px, env(safe-area-inset-top));
