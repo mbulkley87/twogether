@@ -42,6 +42,17 @@ public class Lobby {
         return !started && members.size() < MAX_MEMBERS;
     }
 
+    /**
+     * False once every member's socket has dropped - a lobby someone
+     * created and then abandoned (closed the tab, never came back)
+     * without ever calling /leave. Used to keep the public listing from
+     * showing a "live" game that's actually a ghost - see
+     * LobbyService.listPublicLobbies/evictAbandonedLobbies.
+     */
+    public boolean hasConnectedMember() {
+        return members.stream().anyMatch(LobbyMember::isConnected);
+    }
+
     public Optional<LobbyMember> findMember(UUID playerId) {
         return members.stream().filter(member -> member.getPlayerId().equals(playerId)).findFirst();
     }

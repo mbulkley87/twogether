@@ -18,6 +18,16 @@ import java.util.concurrent.ConcurrentHashMap;
  * join-code/TTL/eviction shape, with the class-pick step removed since
  * there's nothing to pick here. "Ready to start" collapses to "both seats
  * are filled."
+ *
+ * <p>A lobby someone creates and then abandons (closes the tab, hits Back,
+ * tries again) without ever calling /leave used to linger in the public
+ * listing looking like a live open game until the 6-hour TTL swept it -
+ * easy to reproduce by accident (create, abandon, create again) and
+ * confusing for anyone else browsing public games in the meantime. Two
+ * independent fixes close this: {@link #listPublicLobbies()} hides any
+ * lobby with nobody currently connected, and {@link #evictAbandonedLobbies()}
+ * actually removes a fully-disconnected lobby within ~2 minutes instead of
+ * waiting out the full TTL.
  */
 @Service
 public class LobbyService {
@@ -27,10 +37,18 @@ public class LobbyService {
     private static final String CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
     private static final int CODE_LENGTH = 5;
     private static final Duration LOBBY_TTL = Duration.ofHours(6);
+    // Comfortably longer than a page refresh's reconnect (the frontend's
+    // own reconnect-on-mount effect fires in well under a second) but
+    // short enough that an actually-abandoned lobby doesn't haunt the
+    // public listing for hours.
+    private static final Duration ABANDONED_GRACE_PERIOD = Duration.ofMinutes(2);
 
     private final SecureRandom random = new SecureRandom();
     private final Map<String, Lobby> lobbies = new ConcurrentHashMap<>();
     private final Map<String, Instant> lastActivity = new ConcurrentHashMap<>();
+    // Set the moment a lobby's last connected member drops, cleared the
+    // moment anyone reconnects - see markConnected/markDisconnected.
+    private final Map<String, Instant> fullyDisconnectedSince = new ConcurrentHashMap<>();
 
     public record JoinResult(Lobby lobby, UUID playerId) { }
 
@@ -41,15 +59,26 @@ public class LobbyService {
         UUID playerId = UUID.randomUUID();
         lobby.getMembers().add(new LobbyMember(playerId, name, true));
         lobbies.put(code, lobby);
+        // Defensive only - generateUniqueCode() already guarantees `code`
+        // isn't a currently-live lobby, but a stale leftover entry here
+        // (from a code that was freed up by eviction) would otherwise
+        // wrongly mark this brand new lobby as already abandoned.
+        fullyDisconnectedSince.remove(code);
         touch(code);
         return new JoinResult(lobby, playerId);
     }
 
-    /** Public, still-joinable lobbies - what GET /api/lobbies/public lists for join-without-a-code. */
+    /**
+     * Public, still-joinable lobbies with someone actually in them - what
+     * GET /api/lobbies/public lists for join-without-a-code. Excludes a
+     * lobby nobody is currently connected to, even before eviction catches
+     * up to it - see the class-level note.
+     */
     public List<Lobby> listPublicLobbies() {
         return lobbies.values().stream()
                 .filter(Lobby::isPublic)
                 .filter(Lobby::isJoinable)
+                .filter(Lobby::hasConnectedMember)
                 .toList();
     }
 
@@ -112,6 +141,7 @@ public class LobbyService {
         touch(code);
         synchronized (lobby) {
             requireMember(lobby, playerId).setConnected(true);
+            fullyDisconnectedSince.remove(code);
             return lobby;
         }
     }
@@ -122,6 +152,9 @@ public class LobbyService {
         if (lobby == null) return null;
         synchronized (lobby) {
             lobby.findMember(playerId).ifPresent(member -> member.setConnected(false));
+            if (!lobby.hasConnectedMember()) {
+                fullyDisconnectedSince.putIfAbsent(code, Instant.now());
+            }
             return lobby;
         }
     }
@@ -137,6 +170,7 @@ public class LobbyService {
             if (lobby.getMembers().isEmpty()) {
                 lobbies.remove(code);
                 lastActivity.remove(code);
+                fullyDisconnectedSince.remove(code);
                 return null;
             }
 
@@ -189,8 +223,32 @@ public class LobbyService {
         Instant cutoff = Instant.now().minus(LOBBY_TTL);
         lastActivity.entrySet().removeIf(entry -> {
             boolean stale = entry.getValue().isBefore(cutoff);
-            if (stale) lobbies.remove(entry.getKey());
+            if (stale) {
+                lobbies.remove(entry.getKey());
+                fullyDisconnectedSince.remove(entry.getKey());
+            }
             return stale;
+        });
+    }
+
+    /**
+     * Separate from (and much more frequent than) evictStaleLobbies above -
+     * that one's a 6-hour backstop for any lobby regardless of connection
+     * state; this one specifically clears out a lobby nobody is connected
+     * to anymore within ~2 minutes, which is what actually stops an
+     * abandoned "create, then leave without /leave" lobby from sitting in
+     * the public listing (or just occupying memory) for hours.
+     */
+    @Scheduled(fixedRate = 30, timeUnit = java.util.concurrent.TimeUnit.SECONDS)
+    void evictAbandonedLobbies() {
+        Instant cutoff = Instant.now().minus(ABANDONED_GRACE_PERIOD);
+        fullyDisconnectedSince.entrySet().removeIf(entry -> {
+            boolean abandoned = entry.getValue().isBefore(cutoff);
+            if (abandoned) {
+                lobbies.remove(entry.getKey());
+                lastActivity.remove(entry.getKey());
+            }
+            return abandoned;
         });
     }
 }

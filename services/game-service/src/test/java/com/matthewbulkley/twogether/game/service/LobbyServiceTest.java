@@ -136,4 +136,58 @@ class LobbyServiceTest {
         lobbyService.create("Alex", false);
         assertThat(lobbyService.listPublicLobbies()).isEmpty();
     }
+
+    // Regression coverage for the real "duplicate, phantom lobby" bug: a
+    // host creates a public lobby, abandons it (closes the tab without
+    // ever calling /leave) - their socket drops, markDisconnected fires,
+    // and the lobby used to keep showing up in the public listing as a
+    // "live" game for up to 6 hours even though nobody was in it.
+
+    @Test
+    void listPublicLobbiesHidesALobbyNobodyIsCurrentlyConnectedTo() {
+        LobbyService.JoinResult host = lobbyService.create("Alex", true);
+        assertThat(lobbyService.listPublicLobbies()).hasSize(1); // visible while the host is "connected"
+
+        lobbyService.markDisconnected(host.lobby().getCode(), host.playerId());
+
+        assertThat(lobbyService.listPublicLobbies()).isEmpty();
+    }
+
+    @Test
+    void listPublicLobbiesShowsALobbyAgainAfterItReconnects() {
+        LobbyService.JoinResult host = lobbyService.create("Alex", true);
+        lobbyService.markDisconnected(host.lobby().getCode(), host.playerId());
+        assertThat(lobbyService.listPublicLobbies()).isEmpty();
+
+        lobbyService.markConnected(host.lobby().getCode(), host.playerId());
+
+        assertThat(lobbyService.listPublicLobbies()).hasSize(1);
+    }
+
+    @Test
+    void aLobbyIsNotTreatedAsAbandonedIfOnlyOneOfTwoMembersDisconnects() {
+        // A full 2-member lobby is already excluded from listPublicLobbies
+        // by the pre-existing isJoinable() check (no room for a third
+        // player), so the meaningful thing to verify here is that it isn't
+        // ALSO marked abandoned while one member is just waiting on the
+        // other to reconnect.
+        LobbyService.JoinResult host = lobbyService.create("Alex", true);
+        lobbyService.join(host.lobby().getCode(), "Sam");
+
+        lobbyService.markDisconnected(host.lobby().getCode(), host.playerId());
+        lobbyService.evictAbandonedLobbies();
+
+        assertThat(lobbyService.get(host.lobby().getCode())).isNotNull();
+    }
+
+    @Test
+    void evictAbandonedLobbiesDoesNotRemoveAFreshlyDisconnectedLobby() {
+        LobbyService.JoinResult host = lobbyService.create("Alex", false);
+        lobbyService.markDisconnected(host.lobby().getCode(), host.playerId());
+
+        lobbyService.evictAbandonedLobbies();
+
+        // Still well within the grace period - get() should not throw.
+        assertThat(lobbyService.get(host.lobby().getCode())).isNotNull();
+    }
 }
