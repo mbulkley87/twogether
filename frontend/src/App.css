@@ -91,6 +91,41 @@
   height: 100%;
 }
 
+.twogether-hint {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 50;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(16, 16, 22, 0.88);
+  border: 1px solid #333348;
+  backdrop-filter: blur(4px);
+  color: #e0e0ec;
+  font-size: 13px;
+  line-height: 1.4;
+  pointer-events: auto;
+}
+
+.twogether-hint-dismiss {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: #9a9ab0;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px;
+}
+
+.twogether-hint-dismiss:hover {
+  color: #fff;
+}
+
 .twogether-touch-zone {
   position: absolute;
   inset: 0;

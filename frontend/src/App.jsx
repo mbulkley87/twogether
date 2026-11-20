@@ -101,9 +101,12 @@ export default function App() {
       {screen === 'title' && (
         <div className="twogether-panel">
           <p>
-            Two players, two devices. Someone has to hold the button so the
-            other can get through - then you have to figure out how to get
-            them back.
+            Two players, two devices, one shared room. Move with <strong>WASD
+            or the arrow keys</strong> (or the on-screen joystick on
+            touchscreens). One of you has to stand on the lever to hold the
+            door open while the other walks through - the door shuts the
+            instant you step off, so you'll need to talk to each other.
+            Everyone has to reach their own chest to finish.
           </p>
           <button className="twogether-button" onClick={handlePlayClick}>Play</button>
           <button className="twogether-secondary-button" onClick={() => setShowLeaderboard(true)}>

@@ -114,7 +114,7 @@ export default class GameScene extends Phaser.Scene {
       .setOrigin(0.5, 0.82).setScale(CHAR_SCALE)
     this.myPrefix = myPrefix
     this.peerPrefix = peerPrefix
-    this.positionSprite(this.peerSprite, { x: peerSpawn.x * TILE_SIZE, y: peerSpawn.y * TILE_SIZE, dir: 'down', moving: false })
+    this.positionSprite(this.peerSprite, { x: peerSpawn.x * TILE_SIZE, y: peerSpawn.y * TILE_SIZE, dir: 'down', moving: false }, this.peerPrefix)
 
     const pixelWidth = this.level.width * TILE_SIZE
     const pixelHeight = this.level.height * TILE_SIZE

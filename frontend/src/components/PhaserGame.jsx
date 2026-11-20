@@ -7,6 +7,10 @@ import { connectGameSocket } from '../net/gameSocket'
 import TouchControls from './TouchControls'
 
 const TILE_SIZE = 16
+// Non-blocking (doesn't pause movement, the timer, or the socket) - just a
+// reminder that fades on its own so it doesn't get in the way of a repeat
+// player, but still catches a first-timer who hasn't read the title screen.
+const HINT_DISMISS_MS = 9000
 
 export default function PhaserGame({ levelKey, mapWidth, mapHeight, gameId, playerId, mySlot, onComplete, onStatusChange }) {
   const containerRef = useRef(null)
@@ -16,6 +20,7 @@ export default function PhaserGame({ levelKey, mapWidth, mapHeight, gameId, play
   const socketRef = useRef(null)
   const peerRef = useRef({ x: null, y: null, dir: 'down', moving: false })
   const openDoorsRef = useRef(new Set())
+  const [showHint, setShowHint] = useState(true)
   const [showTouchControls] = useState(() => {
     try {
       return window.matchMedia('(pointer: coarse)').matches
@@ -23,6 +28,11 @@ export default function PhaserGame({ levelKey, mapWidth, mapHeight, gameId, play
       return false
     }
   })
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShowHint(false), HINT_DISMISS_MS)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     const socket = connectGameSocket({
@@ -81,6 +91,16 @@ export default function PhaserGame({ levelKey, mapWidth, mapHeight, gameId, play
         className="twogether-phaser-container"
         style={{ '--map-aspect': `${mapWidth} / ${mapHeight}` }}
       />
+      {showHint && (
+        <div className="twogether-hint">
+          <span>
+            🚪 One of you stands on the lever to hold the door open - the
+            other crosses through. It shuts the instant the lever's empty.
+            Reach your own chest to finish.
+          </span>
+          <button type="button" className="twogether-hint-dismiss" onClick={() => setShowHint(false)}>✕</button>
+        </div>
+      )}
       {showTouchControls && (
         <TouchControls
           origin={touch.origin}
